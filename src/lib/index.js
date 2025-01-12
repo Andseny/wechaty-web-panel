@@ -1,7 +1,8 @@
-const Crypto = require('crypto')
-const schedule = require('node-schedule')
-const fs = require('fs')
-const { addRoom, getRoom } = require('../common/roomAvatarDb')
+import Crypto from 'crypto'
+import * as schedule from 'node-schedule'
+import fs from 'fs'
+import dayjs from "dayjs";
+import path from 'path'
 
 /**
  * 设置定时器
@@ -20,7 +21,6 @@ const { addRoom, getRoom } = require('../common/roomAvatarDb')
 // │ │ └─────────────── hour (0 - 23)
 // │ └──────────────────── minute (0 - 59)
 // └───────────────────────── second (0 - 59, OPTIONAL)
-
 // 每分钟的第30秒触发： '30 * * * * *'
 //
 // 每小时的1分30秒触发 ：'30 1 * * * *'
@@ -30,7 +30,6 @@ const { addRoom, getRoom } = require('../common/roomAvatarDb')
 // 每月的1日1点1分30秒触发 ：'30 1 1 1 * *'
 //
 // 每周1的1点1分30秒触发 ：'30 1 1 * * 1'
-
 function setLocalSchedule(date, callback, name) {
   if (name) {
     schedule.scheduleJob(name, { rule: date, tz: 'Asia/Shanghai' }, callback)
@@ -38,28 +37,16 @@ function setLocalSchedule(date, callback, name) {
     schedule.scheduleJob({ rule: date, tz: 'Asia/Shanghai' }, callback)
   }
 }
-
 // 取消任务
 function cancelLocalSchedule(name) {
   schedule.cancelJob(name)
 }
-
 // 取消指定任务
 function cancelAllSchedule(type) {
   for (let i in schedule.scheduledJobs) {
     if (i.includes(type)) {
       cancelLocalSchedule(i)
     }
-  }
-}
-
-/**
- * 获取所有定时任务的job名
- *
- */
-function getAllSchedule() {
-  for (let i in schedule.scheduledJobs) {
-    console.log(i)
   }
 }
 
@@ -72,37 +59,15 @@ async function delay(ms) {
 }
 
 /**
- * 读取文件
- */
-const loadFile = {
-  data: null,
-  mtime: '',
-  fetch(file) {
-    try {
-      let mtime = fs.statSync(file).mtime
-      if (!this.data || mtime - this.mtime !== 0) {
-        console.log('Reload task file: ' + mtime)
-        this.data = JSON.parse(fs.readFileSync(file))
-        this.mtime = +mtime
-      }
-    } catch (e) {
-      console.log(e)
-    }
-    return this.data
-  },
-}
-
-/**
  * 获取周几
  * @param {*} date 日期
  */
 function getDay(date) {
-  var date2 = new Date()
-  var date1 = new Date(date)
-  var iDays = parseInt(Math.abs(date2.getTime() - date1.getTime()) / 1000 / 60 / 60 / 24)
+  var date2 = dayjs().startOf('day').valueOf()
+  var date1 = dayjs(date).endOf('day').valueOf()
+  var iDays = parseInt(Math.abs(date2 - date1) / 1000 / 60 / 60 / 24)
   return iDays
 }
-
 /**
  * 格式化日期
  * @param {*} date
@@ -144,7 +109,6 @@ function formatDate(date) {
   }
   return year + '-' + month + '-' + day + ' ' + hour + ':' + min + ' ' + str
 }
-
 /**
  * 获取今天日期
  * @returns 2019-7-19
@@ -156,7 +120,6 @@ function getToday() {
   let day = date.getDate()
   return year + '-' + month + '-' + day + ' '
 }
-
 /**
  * 转换定时日期格式
  * @param {*} time
@@ -166,7 +129,6 @@ function convertTime(time) {
   let array = time.split(':')
   return '0 ' + array[1] + ' ' + array[0] + ' * * *'
 }
-
 //
 /**
  * 判断日期时间格式是否正确
@@ -186,7 +148,6 @@ function isRealDate(str) {
   if (d.getMinutes() != r[5]) return false
   return true
 }
-
 /**
  * 获取星座的英文
  * @param {*} msg
@@ -232,44 +193,42 @@ function getConstellation(astro) {
     return 'pisces'
   }
 }
-
 /**
  * 获取新闻的英文
  * @param {*} msg
  */
 function getNewsType(msg) {
   const NewsMap = {
-    '社会': 5,
-    '国内': 7,
-    '国际': 8,
-    '娱乐': 10,
-    '美女图片': 11,
-    '体育': 12,
-    '科技': 13,
-    '奇闻异事': 41,
-    '健康知识': 17,
-    '旅游': 18,
-    '汉服': 38,
-    '房产': 37,
-    '科学探索': 36,
-    '汽车': 35,
-    '互联网': 34,
-    '动漫': 33,
-    '财经': 32,
-    '游戏': 32,
-    'CBA': 30,
-    '人工智能': 29,
-    '区块链': 28,
-    '军事': 27,
-    '足球': 26,
-    '创业': 24,
-    '移动互联': 23,
-    'IT': 22,
-    'VR科技': 21
+    社会: 5,
+    国内: 7,
+    国际: 8,
+    娱乐: 10,
+    美女图片: 11,
+    体育: 12,
+    科技: 13,
+    奇闻异事: 41,
+    健康知识: 17,
+    旅游: 18,
+    汉服: 38,
+    房产: 37,
+    科学探索: 36,
+    汽车: 35,
+    互联网: 34,
+    动漫: 33,
+    财经: 32,
+    游戏: 32,
+    CBA: 30,
+    人工智能: 29,
+    区块链: 28,
+    军事: 27,
+    足球: 26,
+    创业: 24,
+    移动互联: 23,
+    IT: 22,
+    VR科技: 21,
   }
   return NewsMap[msg] || 7
 }
-
 /**
  * 返回指定范围的随机整数
  * @param {*} min
@@ -279,7 +238,6 @@ function randomRange(min, max) {
   // min最小值，max最大值
   return Math.floor(Math.random() * (max - min)) + min
 }
-
 /**
  * 写入文件内容
  * @param fpath
@@ -297,7 +255,6 @@ async function writeFile(fpath, encoding) {
     })
   })
 }
-
 /**
  * 解析响应数据
  * @param {*} content 内容
@@ -306,7 +263,6 @@ function parseBody(content) {
   if (!content) return
   return JSON.parse(content.text)
 }
-
 /**
  * MD5加密
  * @return {string}
@@ -314,7 +270,6 @@ function parseBody(content) {
 function MD5(str) {
   return Crypto.createHash('md5').update(str).digest('hex')
 }
-
 /**
  * 对象内容按照字母排序
  * @param obj
@@ -327,7 +282,6 @@ function objKeySort(obj) {
   }
   return newObj
 }
-
 /**
  * 根据排序后的数据返回url参数
  * @param datas
@@ -345,7 +299,6 @@ function getQueryString(datas) {
   }
   return url
 }
-
 /**
  * 获取MD5加密后的Sign
  * @param secret
@@ -356,7 +309,6 @@ function getSign(secret, query) {
   const stringSignTemp = `${query}&ApiSecret=${secret}`
   return MD5(stringSignTemp).toUpperCase()
 }
-
 /**
  * 生成n位随机数
  * @param n
@@ -369,7 +321,6 @@ function rndNum(n) {
   }
   return rnd
 }
-
 /**
  * 生成加密后的对象
  * @param apiKey
@@ -388,7 +339,6 @@ function getFormatQuery(apiKey, apiSecret, params = {}) {
   query.sign = sign
   return query
 }
-
 /**
  * 生成回复内容
  * @param type 内容类型
@@ -400,7 +350,6 @@ function msgArr(type = 1, content = '', url = '') {
   let obj = { type: type, content: content, url: url }
   return [obj]
 }
-
 /**
  * 设置提醒内容解析
  * @param {*} keywordArray 分词后内容
@@ -436,64 +385,6 @@ function contentDistinguish(keywordArray, name) {
   return scheduleObj
 }
 
-//过滤联系人
-/**
- * @param {*} param1
- * name：名字
- * alias：别名
- * friend : 1是朋友 2不是朋友
- * type : 1个人   2 公众号  3 未知
- * gender : 1 男  2  女
- * province : 省份
- * city ：城市
- * address：地址
- */
-function filterContacts(contacts, query) {
-  let { name, alias, friend, type, gender, province, city, address } = query
-  return contacts.filter((item) => {
-    let arr = []
-    let payload = item.payload || item._payload
-    if (friend) {
-      let bool = Number(friend) === 1 ? true : false
-      arr.push(bool === payload.friend)
-    }
-    name && arr.push(payload.name.indexOf(name) >= 0)
-    alias && arr.push(payload.alias.indexOf(alias) >= 0)
-    type && arr.push(Number(type) === payload.type)
-    gender && arr.push(Number(gender) === payload.gender)
-    province && arr.push(payload.province.indexOf(province) >= 0)
-    city && arr.push(payload.city.indexOf(city) >= 0)
-    address && arr.push(payload.address.indexOf(address) >= 0)
-    return arr.indexOf(false) < 0
-  })
-}
-
-/**
- * 格式化联系人
- * @param {*} data
- */
-function formatContacts(data) {
-  let arr = data.map(function (item) {
-    // const file = await item.avatar()
-    // let avatar = await file.toBase64(file.name, true);
-    let payload = item.payload || item._payload
-    return {
-      id: payload.id,
-      name: payload.name,
-      gender: payload.gender === 0 ? '无' : payload.gender === 1 ? '男' : '女',
-      alias: payload.alias,
-      friend: payload.friend ? '是' : '否',
-      star: payload.star ? '是' : '否',
-      type: payload.type === 1 ? '个人' : payload.type === 2 ? '公众号' : '未知',
-      signature: payload.signature,
-      province: payload.province,
-      city: payload.city,
-      address: payload.address,
-    }
-  })
-  return arr
-}
-
 /**
  * 函数节流
  * @param fn
@@ -513,21 +404,18 @@ function throttle(fn, wait) {
     }
   }
 }
-
 /**
  * @return {string}
  */
 function Base64Encode(str) {
   return Buffer.from(str).toString('base64')
 }
-
 /**
  * @return {string}
  */
 function Base64Decode(str) {
   return Buffer.from(str, 'base64').toString('ascii')
 }
-
 /**
  * 数组拆分
  * @param {array} array 数组
@@ -542,84 +430,109 @@ function groupArray(array, subGroupLength) {
   return newArray
 }
 
-/**
- * 获取群用户列表
- * @param {*}} room
- * @param {*} name
- */
-async function getRoomAvatarList(room, name) {
+export function delHtmlTag(str) {
+  if(str) {
+    return str.replace(/<[^>]+>/g,"");//去掉所有的html标记
+  }
+  return ''
+}
+
+export function isCDNFileUrl(url) {
+  // 常见的CDN文件扩展名
+  const cdnFileExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.mp4', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.avi', '.zip', '.wav', '.rar', '.pdf', '.txt', '.log' ];
+
   try {
-    const members = await room.memberAll()
-    let res = []
-    console.log('正在努力获取群成员信息...')
-    for (let i of members) {
-      let member = i.payload || i._payload
-      try {
-        const avatar = await i.avatar()
-        if (avatar._mediaType && avatar._name) {
-          const base64 = member.weixin ? member.avatar : await avatar.toDataURL()
-          let obj = {
-            img: base64,
-            name: member.name,
-          }
-          res.push(obj)
-        }
-      } catch (error) {
-        console.log(`获取${member.name}头像失败， 头像文件格式错误，不影响群合影生成`)
-        continue
-      }
-    }
-    const say = res.splice(
-      res.findIndex((e) => e.name === name),
-      1
-    )
-    res.unshift(say[0])
-    console.log('获取群成员信息完成...')
-    return res
-  } catch (e) {
-    console.log('获取群成员头像列表失败', e)
+    const parsedUrl = new URL(url);
+    const fileExt = path.extname(parsedUrl.pathname).toLowerCase();
+
+    // 检查文件扩展名是否在cdnFileExtensions列表中
+    return cdnFileExtensions.includes(fileExt);
+  } catch (err) {
+    // 无效的URL
+    return false;
   }
 }
 
 /**
- * 设置中心位置
+ * 提取文字中的图片链接 文件链接
+ * @param text
+ * @returns {*[]}
  */
-function setFirstAvatr(list, name) {
-  const temp = list
-  const say = temp.splice(
-    temp.findIndex((e) => e.name === name),
-    1
-  )
-  temp.unshift(say[0])
-  return temp
-}
 
-/**
- * 获取群头像列表
- * @param {*} roomObj
- * @param {*} roomName
- * @param {*} name
- */
-async function getRoomAvatar(roomObj, roomName, name) {
-  try {
-    let memberList = []
-    const room = await getRoom(roomName) // 先获取缓存中是否存在已经获取的头像
-    if (room && room.list) {
-      memberList = room.list
-    } else {
-      const list = await getRoomAvatarList(roomObj, name)
-      const obj = { name: roomName, list }
-      await addRoom(obj)
-      memberList = list
+function extractMarkdownLinks(text) {
+  // 正则表达式匹配所有 Markdown 链接格式
+  const linkRegex = /\[([^\]]*)\]\(([^)]+)\)/g
+  const links = []
+  let cleanedText = text
+
+  let match
+  while ((match = linkRegex.exec(text)) !== null) {
+    let url = match[2]
+
+    // 移除 URL 两端可能存在的引号
+    url = url.replace(/^["']|["']$/g, '')
+
+    if (url) {
+      links.push(url)
     }
-    console.log('准备绘制...')
-    const list = setFirstAvatr(memberList, name)
-    return list
-  } catch (e) {
-    console.log('getRoomAvatar error', e)
+
+    cleanedText = cleanedText.replace(match[0], '')
+  }
+
+  return {
+    links: links,
+    cleanedText: cleanedText.trim()
   }
 }
-module.exports = {
+export function extractImageLinks(text) {
+  // const httpRegex = /(http:\/\/\S+\.(?:jpg|png|gif|webp|jpeg|mp4|doc|docx|xls|xlsx|ppt|pptx|avi|zip|wav|rar|pdf|txt|log))/g;
+  // const httpsRegex = /(https:\/\/\S+\.(?:jpg|png|gif|webp|jpeg|mp4|doc|docx|xls|xlsx|ppt|pptx|avi|zip|wav|rar|pdf|txt|log))/g;
+
+  const fileRegexHttp = /\[[^\]]*\]\((http?:\/\/\S+)\)/g;
+  const filesRegexHttp = /\[[^\]]*\]\((https?:\/\/\S+)\)/g;
+  const { links, cleanedText } = extractMarkdownLinks(text)
+  let imageLinks = links || [];
+  let match;
+
+  // while ((match = httpRegex.exec(text)) !== null) {
+  //   imageLinks.push(match[0]);
+  // }
+  //
+  // while ((match = httpsRegex.exec(text)) !== null) {
+  //   imageLinks.push(match[0]);
+  // }
+
+  while ((match = fileRegexHttp.exec(cleanedText)) !== null || (match = filesRegexHttp.exec(cleanedText)) !== null) {
+    imageLinks.push(match[1]);
+  }
+
+  imageLinks = Array.from(new Set(imageLinks)).filter(item=> isCDNFileUrl(item))
+
+  return imageLinks.map(item=>({ type: 2, url: item }));
+}
+
+export { Base64Encode }
+export { Base64Decode }
+export { setLocalSchedule }
+export { parseBody }
+export { delay }
+export { getToday }
+export { convertTime }
+export { getDay }
+export { formatDate }
+export { isRealDate }
+export { getConstellation }
+export { randomRange }
+export { writeFile }
+export { MD5 }
+export { getFormatQuery }
+export { contentDistinguish }
+export { msgArr }
+export { throttle }
+export { cancelAllSchedule }
+export { groupArray }
+export { getNewsType }
+export default {
   Base64Encode,
   Base64Decode,
   setLocalSchedule,
@@ -638,12 +551,7 @@ module.exports = {
   contentDistinguish,
   msgArr,
   throttle,
-  formatContacts,
-  filterContacts,
   cancelAllSchedule,
-  getAllSchedule,
   groupArray,
-  getRoomAvatarList,
-  getRoomAvatar,
-  getNewsType
+  getNewsType,
 }

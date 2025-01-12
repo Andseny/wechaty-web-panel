@@ -1,5 +1,6 @@
-const cdb = require('../lib/nedb.js')()
+import nedb from './nedb.js'
 
+const cdb = nedb()
 /**
  * 添加配置文件
  * @param {*} config
@@ -12,7 +13,6 @@ async function addConfig(info) {
     console.log('插入数据错误', error)
   }
 }
-
 /**
  * 更新配置文件
  * @param {*} config
@@ -21,11 +21,10 @@ async function updateConfig(config) {
   try {
     let res = await allConfig()
     if (res) {
-      let up = await cdb.update({ id: config.id }, config)
-      return up
+      await cdb.remove({ id: config.id }, { multi: true })
+      return await addConfig(config)
     } else {
-      let add = await addConfig(config)
-      return add
+      return await addConfig(config)
     }
   } catch (error) {
     console.log('配置文件更新失败', error)
@@ -75,8 +74,13 @@ async function roomTaskSchedule() {
     console.log('获取每日任务', error)
   }
 }
-
-module.exports = {
+export { addConfig }
+export { updateConfig }
+export { allConfig }
+export { dayTaskSchedule }
+export { roomNewsSchedule }
+export { roomTaskSchedule }
+export default {
   addConfig,
   updateConfig,
   allConfig,

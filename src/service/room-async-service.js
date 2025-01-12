@@ -1,4 +1,4 @@
-const Mustache = require('mustache')
+import Mustache from 'mustache'
 
 function roomTalker(options) {
   if (!options) {
@@ -16,11 +16,9 @@ function roomTalker(options) {
       } else {
         msg = option
       }
-
       if (!msg) {
         continue
       }
-
       if (typeof msg === 'string') {
         if (mustacheView) {
           msg = Mustache.render(msg, mustacheView)
@@ -36,18 +34,15 @@ function roomTalker(options) {
          */
         await room.say(msg)
       }
-
       await room.wechaty.sleep(1000)
     }
   }
 }
-
 function messageMapper(mapperOptions, one) {
   return async function mapMessage(message) {
     return normalizeMappedMessageList(mapperOptions, message, one)
   }
 }
-
 async function normalizeMappedMessageList(options, message, one) {
   try {
     const msgList = []
@@ -61,7 +56,6 @@ async function normalizeMappedMessageList(options, message, one) {
       if (!option) {
         continue
       }
-
       if (typeof option === 'function') {
         const ret = await option(message, one)
         if (ret) {
@@ -71,24 +65,19 @@ async function normalizeMappedMessageList(options, message, one) {
         msgList.push(option)
       }
     }
-
     return msgList
   } catch (e) {
     console.log('normalizeMappedMessageList error', e)
   }
 }
-
 function messageMatcher(matcherOptions) {
   if (!matcherOptions) {
     return () => Promise.resolve(false)
   }
-
   if (!Array.isArray(matcherOptions)) {
     matcherOptions = [matcherOptions]
   }
-
   const matcherOptionList = matcherOptions
-
   return async function matchMessage(message) {
     try {
       const room = message.room()
@@ -111,7 +100,6 @@ function messageMatcher(matcherOptions) {
         } else {
           throw new Error('unknown matcher ' + option)
         }
-
         if (isMatch) {
           return true
         }
@@ -124,7 +112,6 @@ function messageMatcher(matcherOptions) {
     }
   }
 }
-
 /**
  * 消息发送者name
  * @param message
@@ -141,7 +128,6 @@ const senderDisplayName = async (message) => {
     return 'Noname'
   }
 }
-
 /**
  * 过滤群名
  * @param matcher
@@ -154,7 +140,6 @@ function abbrRoomTopicByRegex(matcher) {
     if (!room) {
       return
     }
-
     const topic = await room.topic()
     const matched = topic.match(matcher)
     if (!matched) {
@@ -163,7 +148,6 @@ function abbrRoomTopicByRegex(matcher) {
     return matched[1]
   }
 }
-
 /**
  * 只转发文字消息
  * @param message
@@ -176,19 +160,15 @@ const bidirectionalMapper = async (message) => {
     if (message.type() !== 7) {
       return
     }
-
     const talkerDisplayName = await senderDisplayName(message)
     const roomShortName = (await abbrRoomTopicForDevelopersHome(message)) || 'Nowhere'
-
     const text = message.text()
-
     return `[${talkerDisplayName}@${roomShortName}]: ${text}`
   } catch (e) {
     console.log('bidirectionalMapper error', e)
     return ``
   }
 }
-
 /**
  * 转发文字和其他类型
  * @param message
@@ -200,9 +180,7 @@ const unidirectionalMapper = async (message, one) => {
     const abbrRoomTopicForDevelopersHome = abbrRoomTopicByRegex(/\s*([^\s]*\s*[^\s]+)$/)
     const talkerDisplayName = await senderDisplayName(message)
     const roomShortName = (await abbrRoomTopicForDevelopersHome(message)) || 'Nowhere'
-
     const prefix = `[${talkerDisplayName}@${roomShortName}]`
-
     const messageList = []
     const room = message.room()
     const topic = await room.topic()
@@ -210,7 +188,6 @@ const unidirectionalMapper = async (message, one) => {
       case 7:
         messageList.push(`${prefix}: ${message.text()}`)
         break
-
       default:
         // Forward all non-Text messages
         messageList.push(message)
@@ -219,23 +196,43 @@ const unidirectionalMapper = async (message, one) => {
          * then we add a sender information for the destination rooms.
          */
         if (topic === one) {
-          const type = Message[message.type()]
-          messageList.unshift(`${prefix}: ${type}`)
+          const typeMap = {
+            0:'Unknown',
+            1:'Attachment',      // Attach(6),
+            2:'Audio',         // Audio(1), Voice(34)
+            3:'Contact',         // ShareCard(42)
+            4:'ChatHistory',   // ChatHistory(19)
+            5:'Emoticon',       // Sticker: Emoticon(15), Emoticon(47)
+            6:'Image',        // Img(2), Image(3)
+            7:'Text',         // Text(1)
+            8:'Location',    // Location(48)
+            9:'MiniProgram',  // MiniProgram(33)
+            10:'GroupNote',   // GroupNote(53)
+            11:'Transfer',   // Transfers(2000)
+            12:'RedEnvelope',   // RedEnvelopes(2001)
+            13:'Recalled',   // Recalled(10002)
+            14:'Url',   // Url(5)
+            15:'Video',   // Video(4), Video(43)
+            16:'Post',   // Moment, Channel, Tweet, etc
+            17:'Channel',   // Channel
+            18:'System',   // System Message
+            19:'Markdown',   // Markdown Message
+            20:'CallRecord',   // Call Record (voice and video, maybe group?)
+          }
+          const type = typeMap[message.type()]
+          // messageList.unshift(`${prefix}: ${type}`)
         }
         break
     }
-
     return messageList
   } catch (e) {
     console.log('unidirectionalMapper error', e)
     return []
   }
 }
-
 const isMatchConfig = (config) => {
   const matchWhitelist = messageMatcher(config.whitelist)
   const matchBlacklist = messageMatcher(config.blacklist)
-
   return async function isMatch(message) {
     try {
       if (message.self()) {
@@ -252,14 +249,12 @@ const isMatchConfig = (config) => {
           return
         }
       }
-
       if (await matchWhitelist(message)) {
         return true
       }
       if (await matchBlacklist(message)) {
         return false
       }
-
       return true
     } catch (e) {
       console.log('isMatchConfig error', e)
@@ -267,7 +262,6 @@ const isMatchConfig = (config) => {
     }
   }
 }
-
 /**
  * 多个群消息同步
  * @param that
@@ -284,7 +278,6 @@ async function manyToMany(that, config, msg) {
       if (!match) {
         return
       }
-
       const msgList = await mapMessage(message)
       if (msgList.length <= 0) {
         return
@@ -304,7 +297,11 @@ async function manyToMany(that, config, msg) {
     if (!manyRoomList.length) {
       for (let i = 0; i < config.many.length; i++) {
         const room = await that.Room.find({ topic: config.many[i] })
-        manyRoomList.push(room)
+        if(room) {
+          manyRoomList.push(room)
+        }  else {
+          console.log(`没有查找到群:${config.many[i]}`)
+        }
       }
     }
     await matchAndForward(msg, manyRoomList)
@@ -312,7 +309,6 @@ async function manyToMany(that, config, msg) {
     console.log('manyToMany error', e)
   }
 }
-
 /**
  * 多个群消息同步到指定群
  * @param that
@@ -320,7 +316,6 @@ async function manyToMany(that, config, msg) {
  * @param msg
  * @returns {Promise<void>}
  */
-
 async function manyToOne(that, config, msg) {
   try {
     const isMatch = isMatchConfig(config)
@@ -347,7 +342,6 @@ async function manyToOne(that, config, msg) {
     console.log('manyToOne error', e)
   }
 }
-
 /**
  * 一对多， 一个群发的消息同步到其他几个群
  * @param that
@@ -382,7 +376,11 @@ async function oneToMany(that, config, msg) {
     if (!manyRoomList.length) {
       for (let i = 0; i < config.many.length; i++) {
         const room = await that.Room.find({ topic: config.many[i] })
-        manyRoomList.push(room)
+        if(room) {
+          manyRoomList.push(room)
+        } else {
+          console.log(`没有查找到群:${config.many[i]}`)
+        }
       }
     }
     await matchAndForward(msg, manyRoomList)
@@ -390,7 +388,6 @@ async function oneToMany(that, config, msg) {
     console.log('oneToMany error', e)
   }
 }
-
 /**
  *  model: 1 一对多 2 多对一 3 多对多
  * @param that wechaty实例
@@ -400,10 +397,8 @@ async function oneToMany(that, config, msg) {
  */
 async function dispatchAsync(that, msg, list) {
   try {
-    const userSelfName = that.currentUser?.name?.()
     const type = msg.type()
-    const content = msg.text()
-    const mentionSelf = content.includes(`@${userSelfName}`)
+    const mentionSelf = await msg.mentionSelf()
     if (7 === type && mentionSelf) {
       // 如果内容中有提及机器人的内容，不进行转发
       return
@@ -430,7 +425,4 @@ async function dispatchAsync(that, msg, list) {
     console.log('dispatchAsync error:', e)
   }
 }
-
-module.exports = {
-  dispatchAsync,
-}
+export { dispatchAsync }

@@ -1,7 +1,5 @@
-const path = require('path')
-const { addRoomWelcomeSay } = require('../common/index')
-const { allConfig } = require('../common/configDb')
-
+import { addRoomWelcomeSay } from '../common/index.js'
+import { allConfig } from '../db/configDb.js'
 /**
  * 判断配置中是否存在此群
  * @param {*} arr 配置的群组
@@ -23,7 +21,7 @@ async function onRoomjoin(room, inviteeList, inviter, date) {
     const config = await allConfig()
     const nameList = inviteeList.map((c) => c.name()).join(',')
     const roomName = await room.topic()
-    const roomIndex = roomHasConfig(config.roomJoinKeywords, roomName)
+    const roomIndex = config && roomHasConfig(config.roomJoinKeywords, roomName)
     console.log('进群', roomName, roomIndex, nameList)
     if (roomIndex > -1) {
       const { welcomes } = config.roomJoinKeywords[roomIndex]
@@ -36,5 +34,4 @@ async function onRoomjoin(room, inviteeList, inviter, date) {
     console.log('on room join error: ', e)
   }
 }
-
-module.exports = onRoomjoin
+export default onRoomjoin

@@ -1,6 +1,9 @@
-const { aiBotReq, req } = require('./superagent')
-const { updateConfig } = require('../common/configDb')
-const pjson = require('../../package.json')
+import { aiBotReq, req } from './superagent.js'
+import { updateConfig } from '../db/configDb.js'
+import { packageJson } from '../package-json.js'
+import { updateAllRssConfig, resetRssData } from "../db/rssConfig.js";
+import { getPuppetEol } from "../const/puppet-type.js";
+import globalConfig from "../db/global.js";
 
 /**
  * 获取美女图片
@@ -23,6 +26,64 @@ async function getMeiNv() {
     return 'https://tva2.sinaimg.cn/large/0072Vf1pgy1foxkcsx9rmj31hc0u0h9k.jpg'
   }
 }
+
+
+/**
+ * 获取配置词云的所有群名
+ */
+export async function getWordCloudRoom() {
+  try {
+    let option = {
+      method: 'get',
+      url: '/wordcloudroom',
+      params: {},
+    }
+    let content = await aiBotReq(option)
+    const roomNames = content.data.map(item=> item.roomName)
+    return roomNames  || []
+  } catch (e) {
+    console.log('群词云配置拉取失败', e)
+    return []
+  }
+}
+/**
+ * 获取群合影配置
+ */
+export async function getWordCloudConfig(roomName) {
+  try {
+    let option = {
+      method: 'get',
+      url: '/roomCloud',
+      params: { name: roomName },
+    }
+    let content = await aiBotReq(option)
+    return content.data || ''
+  } catch (e) {
+    console.log('群词云配置拉取失败', e)
+  }
+}
+
+/**
+ * 获取词云图片
+ */
+export async function getWordCloud(wordcontent, background, border) {
+  try {
+    let option = {
+      method: 'POST',
+      url: '/wordcloud',
+      params: {
+        content: wordcontent,
+        background,
+        border
+      },
+    }
+    let content = await aiBotReq(option)
+    let pics = decodeURIComponent(content.data.img)
+    return pics
+  } catch (e) {
+    console.log('获取词云图片失败', e)
+  }
+}
 /**
  * 获取每日一句
  */
@@ -41,7 +102,86 @@ async function getOne() {
     return '今日一句似乎已经消失'
   }
 }
+/**
+ * 获取火灾新闻
+ */
+async function getFireNews(id, num) {
+  try {
+    let option = {
+      method: 'GET',
+      url: '/firenews',
+      params: {
+        id,
+        num
+      },
+    }
+    let content = await aiBotReq(option)
+    let newList = content.data || []
+    let news = ''
+    const eol = await getPuppetEol();
+    for (let i in newList) {
+      let num = parseInt(i) + 1
+      const url = newList[i].shortUrl?newList[i].shortUrl:newList[i].url
+      news = `${news}${eol}${num}.${newList[i].title}${url?`${eol}${url}${eol}`:`${eol}`}`
+    }
+    const endMap = {
+      1001: '您可以 @消防小助手+新闻标题，通过ChatGPT为您分析时事新闻！',
+      1002: '您可以 @消防小助手+新闻标题，通过ChatGPT为您分析今日消防行业招标信息！',
+    }
+    return `${news}…………………………${eol}${eol}${endMap[id] || ''}`
+  } catch (e) {
+    console.log('获取每日一句失败', e)
+    return '今日一句似乎已经消失'
+  }
+}
 
+/**
+ * 获取自定义内容
+ * @param id
+ * @param taskId
+ * @returns {Promise<[{type: number, content: string}]|*[]>}
+ */
+export async function getCustomNews(id, taskId) {
+  try {
+    let option = {
+      method: 'GET',
+      url: '/customnews',
+      params: {
+        id,
+        taskId
+      },
+    }
+    let content = await aiBotReq(option)
+    let newContent = content.data || []
+
+    return newContent
+  } catch (e) {
+    console.log('定制内容获取失败', e)
+    return [{ type: 1, content: '定制内容获取失败' }]
+  }
+}
+
+/**
+ * 获取自定义技能
+ * @param params
+ * @returns {Promise<[{type: number, content: string}]|*[]>}
+ */
+export async function getCustomEvents(params) {
+  try {
+    let option = {
+      method: 'POST',
+      url: '/customevent',
+      params,
+    }
+    let content = await aiBotReq(option)
+    let newContent = content.data || []
+
+    return newContent
+  } catch (e) {
+    console.log('自定义技能获取失败', e)
+    return [{ type: 1, content: '自定义技能获取失败' }]
+  }
+}
 /**
  * 获取配置文件
  * @returns {Promise<*>}
@@ -55,10 +195,252 @@ async function getConfig() {
     }
     let content = await aiBotReq(option)
     const config = JSON.parse(content.data.config)
-    let cres = await updateConfig({ puppetType: 'wechaty-puppet-wechat', ...config })
+    let cloudRoom = []
+    if(config.userInfo.role === 'vip') {
+      await getGptConfig()
+      await getRssConfig()
+      await getTasks()
+      cloudRoom = await getWordCloudRoom()
+    }
+
+    let cres = await updateConfig({
+      puppetType: 'wechaty-puppet-wechat',
+      no_remind: false, // 不需要开启提醒
+      botScope: 'all',
+      parseMini: false,
+      openaiSystemMessage: '',
+      showQuestion: true,
+      openaiTimeout: 60,
+      openaiAccessToken: '',
+      openaiDebug: false,
+      openaiModel:'gpt-3.5-turbo',
+      temperature: 0.8,
+      top_p: 1,
+      presence_penalty: 1,
+      maxToken: null,
+      modelMaxToken: null,
+      cozev3_token: '',
+      cozev3_botId: '',
+      cozev3_baseUrl: '',
+      qany_botId: '',
+      qany_token: '',
+      qany_baseUrl: '',
+      dify_token: '',
+      dify_baseUrl: '',
+      difyAgent: false,
+      coze_token: '',
+      coze_botId: '',
+      coze_baseUrl: '',
+      coze_showSuggestions: false,
+      proxyUrl: '',
+      proxyPassUrl: '',
+      chatFilter: 0,
+      filterType: 1, // 过滤引擎类型 1 百度文本审核
+      filterAppid: '',
+      filterApiKey: '',
+      filterSecretKey: '',
+      countDownTaskSchedule: [],
+      parseMiniRooms: [],
+      preventLength: 1000,
+      preventWords: '',
+      customBot: null,
+      roomAt: 1,
+      friendNoReplyInRoom: 0,
+      defaultReply: '',
+      forwards: [],
+      openRecord: false,
+      openWhisper: false,
+      whisperConfig: {},
+      ignoreRoomMentionAll: true,
+      ...config,
+      cloudRoom
+    })
     return cres
   } catch (e) {
     console.log('获取配置文件失败:' + e)
+  }
+}
+
+/**
+ * 获取gpt配置
+ * @return {Promise<*>}
+ */
+export async function getGptConfig() {
+  try {
+    let option = {
+      method: 'GET',
+      url: '/gpt/config',
+      params: {},
+    }
+    let content = await aiBotReq(option)
+    if(content.data) {
+      const list = content.data.map(item=> ({...item, _id: item.id}))
+      globalConfig.updateAllGptConfig(list)
+    }
+  } catch (error) {
+    console.log('获取gpt配置文件失败:' + error)
+  }
+}
+
+/**
+ * 获取批量任务
+ * @return {Promise<*>}
+ */
+export async function getTasks() {
+  try {
+    let option = {
+      method: 'GET',
+      url: '/user/task',
+      params: {},
+    }
+    let content = await aiBotReq(option)
+    if(content.data) {
+      const list = content.data.map(item=> ({...item, _id: item.id}))
+      globalConfig.updateAllTasks(list)
+    }
+  } catch (error) {
+    console.log('获取批量任务失败:' + error)
+  }
+}
+
+/**
+ * 获取rss配置
+ * @return {Promise<*>}
+ */
+export async function getRssConfig() {
+  try {
+    let option = {
+      method: 'GET',
+      url: '/rss/config',
+      params: {},
+    }
+    let content = await aiBotReq(option)
+    if(content.data) {
+      const list = content.data.map(item=> ({...item, _id: item.id}))
+      resetRssData()
+      await updateAllRssConfig(list)
+    }
+  } catch (error) {
+    console.log('获取rss配置文件失败:' + error)
+  }
+}
+/**
+ * 更新rss最后一条内容的配置
+ * @return {Promise<*>}
+ */
+async function updateRssLast(id, lastcontent) {
+  try {
+    console.log('id----', id, lastcontent)
+    let option = {
+      method: 'POST',
+      url: `/rss/lastcontent/${id}`,
+      params: {
+        content: lastcontent
+      },
+    }
+    let content = await aiBotReq(option)
+    return content
+  } catch (error) {
+    console.log('获取rss配置文件失败:' + error)
+  }
+}
+/**
+ * 更新rss最后一条内容的配置
+ * @return {Promise<*>}
+ */
+async function getRssLast(id) {
+  try {
+    let option = {
+      method: 'GET',
+      url: `/rss/lastcontent/${id}`,
+      params: {},
+    }
+    let content = await aiBotReq(option)
+    return content.data;
+  } catch (error) {
+    console.log('获取rss配置文件失败:' + error)
+  }
+}
+
+/**
+ * 更新对话次数
+ * @param id
+ * @param num
+ * @return {Promise<*>}
+ */
+async function updateChatRecord(id, num) {
+  try {
+    let option = {
+      method: 'POST',
+      url: '/gpt/config',
+      params: {
+        id,
+        usedNum: num
+      },
+    }
+    let content = await aiBotReq(option)
+    return content.data
+  } catch (error) {
+    console.log('更新对话次数' + error)
+  }
+}
+
+/**
+ * 获取promotion信息
+ * @param id
+ * @return {Promise<*>}
+ */
+async function getPromotInfo(id) {
+  try {
+    let option = {
+      method: 'get',
+      url: '/promot/info',
+      params: {
+        id
+      },
+    }
+    let content = await aiBotReq(option)
+    return content.data
+  } catch (e) {
+    console.log("catch error:" + e);
+  }
+}
+
+/**
+ * 获取输入的验证码
+ * @param id
+ * @return {Promise<*>}
+ */
+async function getVerifyCode() {
+  try {
+    let option = {
+      method: 'get',
+      url: '/worker/verifycode',
+    }
+    let content = await aiBotReq(option)
+    console.log('获取微秘书平台输入的验证码', JSON.stringify(content.data))
+    if(content.data.code) {
+      globalConfig.setVerifyCode(content.data.code)
+    }
+  } catch (e) {
+    console.log("catch error:" + e);
+  }
+}
+
+/**
+ * 清除使用过的验证码
+ * @returns {Promise<*>}
+ */
+async function clearVerifyCode() {
+  try {
+    let option = {
+      method: 'get',
+      url: '/worker/clearverifycode',
+    }
+    await aiBotReq(option)
+    globalConfig.setVerifyCode('')
+  } catch (e) {
+    console.log("catch error:" + e);
   }
 }
 
@@ -80,7 +462,6 @@ async function getScheduleList() {
     console.log('获取定时任务失败:' + error)
   }
 }
-
 /**
  * 设置定时提醒任务
  * @param {*} obj 任务详情
@@ -99,7 +480,6 @@ async function setSchedule(obj) {
     console.log('添加定时任务失败', error)
   }
 }
-
 /**
  * 更新定时提醒任务
  */
@@ -116,7 +496,6 @@ async function updateSchedule(id) {
     console.log('更新定时任务失败', error)
   }
 }
-
 /**
  * 登录二维码推送
  * @param url
@@ -140,7 +519,6 @@ async function setQrCode(url, status) {
     console.log('推送登录二维码失败', error)
   }
 }
-
 /**
  * 推送登录状态的心跳
  * @param heart
@@ -154,31 +532,10 @@ async function sendHeartBeat(heart) {
       params: { heartBeat: heart },
     }
     let content = await aiBotReq(option)
-    console.log('推送心跳成功')
   } catch (error) {
     console.log('推送心跳失败', error)
   }
 }
-
-/**
- * 推送错误
- * @param error
- * @returns {Promise<void>}
- */
-async function sendError(error) {
-  try {
-    let option = {
-      method: 'GET',
-      url: '/wechat/qrerror',
-      params: { qrError: error },
-    }
-    let content = await aiBotReq(option)
-    console.log('推送错误成功', error)
-  } catch (e) {
-    console.log('推送错误失败', e)
-  }
-}
-
 /**
  * 更新头像
  * @returns {Promise<void>}
@@ -193,7 +550,6 @@ async function sendRobotInfo(url, name, id) {
       params: { avatar: url, robotName: name, robotId: id },
     }
     let content = await aiBotReq(option)
-    console.log('推送头像成功')
   } catch (error) {
     console.log('推送头像失败', error)
   }
@@ -254,7 +610,6 @@ async function asyncData(robotId, type) {
     console.log('同步好友列表失败', error)
   }
 }
-
 /**
  * 获取上传token
  * @returns {Promise<*>}
@@ -271,41 +626,6 @@ async function getQiToken() {
     return content.data.token
   } catch (e) {
     console.log('token error', e)
-  }
-}
-/**
- * 获取群合影配置
- */
-async function getRoomPhotoConfig(roomName) {
-  try {
-    let option = {
-      method: 'get',
-      url: '/roomPhoto',
-      params: { name: roomName },
-    }
-    let content = await aiBotReq(option)
-    return content.data || ''
-  } catch (e) {
-    console.log('群合影生成错误', e)
-  }
-}
-/**
- * 生成群合影
- * @param {*}} roomName 群名
- * @param {*} list 群成员列表
- * @param {*} contactName 触发用户
- */
-async function drawRoomPhoto(roomName, list, contactName) {
-  try {
-    let option = {
-      method: 'POST',
-      url: '/roomPhoto',
-      params: { name: roomName, user: contactName, list: list },
-    }
-    let content = await aiBotReq(option)
-    return content.data
-  } catch (e) {
-    console.log('群合影生成错误', e)
   }
 }
 /**
@@ -344,16 +664,31 @@ async function updatePanelVersion() {
     let option = {
       method: 'POST',
       url: '/webPanel/version',
-      params: { version: pjson.version || '0.2.11' },
+      params: { version: packageJson.version || '' },
     }
-    console.log('更新插件版本号', pjson.version)
+    console.log('更新插件版本号', packageJson.version)
     let content = await aiBotReq(option)
     return content.data
   } catch (error) {
     console.log('error', error)
   }
 }
-
+/**
+ * 更新插件版本信息
+ * @param {*} version
+ */
+export async function getPanelVersion() {
+  try {
+    let option = {
+      method: 'GET',
+      url: '/webPanel/version',
+    }
+    let content = await aiBotReq(option)
+    return content.data.version
+  } catch (error) {
+    console.log('error', error)
+  }
+}
 /**
  * 获取mqtt信息
  * @param {*} version
@@ -371,7 +706,6 @@ async function getMqttConfig() {
     console.log('获取mqtt配置错误', error)
   }
 }
-
 /**
  * 获取实时素材
  * @param {*} version
@@ -392,25 +726,49 @@ async function getMaterial(id) {
     console.log('获取mqtt配置错误', error)
   }
 }
-
-module.exports = {
+export { getVerifyCode }
+export { clearVerifyCode }
+export { getConfig }
+export { getScheduleList }
+export { setSchedule }
+export { updateSchedule }
+export { setQrCode }
+export { sendHeartBeat }
+export { sendRobotInfo }
+export { putqn }
+export { sendFriend }
+export { sendRoom }
+export { asyncData }
+export { updatePanelVersion }
+export { getMqttConfig }
+export { getMeiNv }
+export { getOne }
+export { getMaterial }
+export { getFireNews }
+export { updateChatRecord }
+export {  getPromotInfo  }
+export {  getRssLast  }
+export {  updateRssLast  }
+export default {
   getConfig,
   getScheduleList,
   setSchedule,
   updateSchedule,
   setQrCode,
   sendHeartBeat,
-  sendError,
   sendRobotInfo,
   putqn,
   sendFriend,
   sendRoom,
   asyncData,
-  drawRoomPhoto,
   updatePanelVersion,
-  getRoomPhotoConfig,
   getMqttConfig,
   getMeiNv,
   getOne,
   getMaterial,
+  getFireNews,
+  clearVerifyCode,
+  getRssLast,
+  updateRssLast,
+  getVerifyCode
 }

@@ -2,8 +2,6 @@
 */.settings
 */target
 *target
-*/.settings
-*/target
 *.project
 *.classpath
 *.idea
@@ -26,4 +24,5 @@ pids
 npm-debug.log
 /yarn.lock
 *.template.js
-
+dist
+*.db

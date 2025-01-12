@@ -2,12 +2,36 @@
 
 [![Wechaty Plugin Web Panel](https://img.shields.io/badge/Wechaty%20Plugin-WebPanel-brightgreen.svg)](https://github.com/gengchen528/wechaty-web-panel)
 [![Powered by Wechaty](https://img.shields.io/badge/Powered%20By-Wechaty-brightgreen.svg)](https://github.com/Wechaty/wechaty)
+[![NPM Version](https://badge.fury.io/js/wechaty-web-panel.svg)](https://www.npmjs.com/package/wechaty-web-panel)
 
-Wechaty Web Panel 插件，让你的 wechaty 机器人快速接入 web 控制面板
+Wechaty Web Panel 插件，让你的 Wechaty 机器人快速接入 web 控制面板
+
+本项目为插件源码，非直接运行的项目。如需可直接运行的项目，请直接拉取 [https://github.com/leochen-g/wechat-assistant-pro](https://github.com/leochen-g/wechat-assistant-pro) 即可
+
+## 快速测试
+
+### 下载源码并安装依赖
+
+```sh
+git clone https://github.com/leochen-g/wechaty-web-panel.git
+cd wechaty-web-panel
+npm install # 可指定淘宝镜像源加速: --registry=https://registry.npmmirror.com
+```
+
+### 测试微信
+
+在 test/wechat.js文件中填入apiKey与apiSecret，运行如下命令
+```sh
+npm run test:wechat
+```
+
+### 测试企业微信
+需要有企业微信token，在test/wework.js填入workProToken、apiKey与apiSecret，运行如下命令
+```sh
+npm run test:wework
+```
 
 ## 面板主要功能
-
-- [x] 微信每日说,定时给女朋友发送每日天气提醒，以及每日一句
 
 * 定时提醒
 
@@ -20,18 +44,26 @@ Wechaty Web Panel 插件，让你的 wechaty 机器人快速接入 web 控制面
 - [x] 天行机器人
 - [x] 图灵机器人
 - [x] 腾讯闲聊机器人
+- [x] ChatGPT api (支持切换模型)
+- [x] ChatGPT 网页hook
+- [x] 微信对话开放平台
+- [x] Dify 平台和FastGPT无缝适配
+- [x] GPT-4V识图功能
 - [ ] 更多
 
-* 群定时任务
+* 定时任务
 
-- [x] 群新闻定时发送
-- [x] 群消息定时发送
+- [x] 新闻定时发送
+- [x] 倒计时提醒
+- [x] 自定义内容定时发送
+- [x] 个性化内容定制
+- [x] 微信每日说,定时给女朋友和群友发送每日天气提醒，以及每日一句
 - [ ] 更多功能等你来 pr
 
-* 关键词
+* 技能中心
 
 - [x] 关键词加好友
-- [x] 关键词加群
+- [x] 关键词加群，群欢迎词设置
 - [x] 关键词回复
 - [x] 关键词事件
   - [x] 天气查询 例："上海天气"
@@ -44,11 +76,13 @@ Wechaty Web Panel 插件，让你的 wechaty 机器人快速接入 web 控制面
   - [x] 获取表情包 例： "表情包你好坏"
   - [x] 获取美女图 例： "美女图"
   - [x] 群合影 例： "群合影"
-  - [x] 牛年头像 例： "牛气冲天"
-  - [x] 国旗头像 例： "我要国旗"
+  ~~- [x] 牛年头像 例： "牛气冲天"~~
+  ~~- [x] 国旗头像 例： "我要国旗"(下线)~~
   - [ ] 更多待你发现
 - [x] 进群自动欢迎
 - [x] 加好友自动回复
+- [x] 自定义回调事件
+- [x] 私聊消息同步到群或好友
 
 * 自动更新配置文件，无需重启
 
@@ -56,14 +90,17 @@ Wechaty Web Panel 插件，让你的 wechaty 机器人快速接入 web 控制面
 
 * 特色功能
 
-- [x] 群合影
+~~- [x] 群合影(下线)~~
 - [x] 主动发送消息
 - [x] 主动更新配置
 - [x] 主动同步好友和群列表
-- [x] 多群消息同步
+- [x] 跨群聊天，打通多群沟通
+- [x] 回调事件
+- [x] 群发助手，转发助手
 - [x] openapi请求
+- [x] rss订阅推送
 
-更多详情介绍：[传送门](https://www.xkboke.com/web-inn/secretary/client.html#%E5%B0%8F%E5%8A%A9%E6%89%8B%E5%8A%9F%E8%83%BD%E4%B8%80%E8%A7%88)
+更多详情介绍：[传送门](https://help.aibotk.com/?plugin=czw_emDoc&post=2)
 
 ## 提前准备
 
@@ -127,7 +164,7 @@ npm install wechaty-web-panel@latest wechaty@latest --save
 $ vim mybot.js
 
 const {WechatyBuilder} = require('wechaty')
-const WechatyWebPanelPlugin = require('../src/index')
+const WechatyWebPanelPlugin = require('wechaty-web-panel')
 
 const name = 'wechat-assistant'
 
@@ -163,7 +200,6 @@ $ node mybot.js
 ![](./doc/img/index.png)
 ![](./doc/img/roomasync.png)
 ![](./doc/img/everyday.png)
-![](./doc/img/schedule.png)
 ![](./doc/img/event.png)
 ![](./doc/img/material.png)
 
@@ -177,8 +213,4 @@ $ node mybot.js
 
 群消息同步
 
-![](./doc/img/async.png)
-
-群合影
-
-![](./doc/img/group.jpeg)
+<img src="./doc/img/async.png" width="300">
